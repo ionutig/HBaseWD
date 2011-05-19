@@ -50,7 +50,7 @@ public class WdTableInputFormat extends TableInputFormat {
           rowKeyDistributor.init(conf.get(ROW_KEY_DISTRIBUTOR_PARAMS));
         }
       } catch (Exception e) {
-        throw new RuntimeException("Cannot create row key distributor, " + ROW_KEY_DISTRIBUTOR_CLASS + ": " + clazz);
+        throw new RuntimeException("Cannot create row key distributor, " + ROW_KEY_DISTRIBUTOR_CLASS + ": " + clazz, e);
       }
     }
   }
@@ -63,7 +63,7 @@ public class WdTableInputFormat extends TableInputFormat {
     byte[][] startRows = rowKeyDistributor.getAllDistributedKeys(originalScan.getStartRow());
     byte[][] stopRows = rowKeyDistributor.getAllDistributedKeys(originalScan.getStopRow());
 
-    for (byte i = 0; i < startRows.length; i++) {
+    for (int i = 0; i < startRows.length; i++) {
       // Internally super.getSplits(...) uses scan object stored in private variable,
       // to re-use the code of super class we switch scan object with scans we
       Scan scan = new Scan(originalScan);

@@ -75,6 +75,22 @@ Performing mapreduce job over written data chunk specified by Scan:
     keyDistributor.addInfo(job.getConfiguration());
 
 
+Another useful RowKeyDistributor is RowKeyDistributorByHashPrefix. Please see
+example below. It will creates "distributed key" based on original key value
+so that later when you have original key and want to update the record you can
+calculate distributed key without roundtrip to HBase.
+
+    AbstractRowKeyDistributor keyDistributor =
+            new RowKeyDistributorByHashPrefix(
+                      new RowKeyDistributorByHashPrefix.OneByteSimpleHash(15));
+
+You can use your own hashing logic here by implementing simple interface:
+
+    public static interface Hasher extends Parametrizable {
+      byte[] getHashPrefix(byte[] originalKey);
+      byte[][] getAllPossiblePrefixes();
+    }
+
 Extending Row Keys Distributing Patterns:
 -----------------------------------------
 

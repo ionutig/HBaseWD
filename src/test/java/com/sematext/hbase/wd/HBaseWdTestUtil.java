@@ -35,39 +35,37 @@ import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 
 /**
  * General unit-test for the whole concept 
  *
  * @author Alex Baranau
  */
-public class TestHBaseWd {
+public class HBaseWdTestUtil {
   private HBaseTestingUtility testingUtility;
-  public static final byte[] CF = Bytes.toBytes("colfam");
-  public static final byte[] QUAL = Bytes.toBytes("qual");
+  protected HTable hTable;
 
   @Before
   public void before() throws Exception {
     testingUtility = new HBaseTestingUtility();
     testingUtility.startMiniCluster(1);
+    hTable = testingUtility.createTable(Bytes.toBytes("table"), CF);
   }
 
   @After
   public void after() throws IOException {
+    hTable = null;
     testingUtility.shutdownMiniCluster();
     testingUtility = null;
   }
 
-  @Test
-  public void testSimpleScan() throws IOException, InterruptedException {
-    byte bucketsCount = (byte) 12;
+  public static final byte[] CF = Bytes.toBytes("colfam");
+  public static final byte[] QUAL = Bytes.toBytes("qual");
 
-    HTable hTable = testingUtility.createTable(Bytes.toBytes("table"), CF);
+  protected void testSimpleScan(AbstractRowKeyDistributor keyDistributor) throws IOException {
     long millis = System.currentTimeMillis();
     int valuesCountInSeekInterval = 0;
 
-    AbstractRowKeyDistributor keyDistributor = new RowKeyDistributorByOneBytePrefix(bucketsCount);
     for (int i = 0; i < 500; i++) {
       int val = 500 + i - i * (i % 2) * 2; // i.e. 500, 499, 502, 497, 504, ...
       valuesCountInSeekInterval += (val >= 100 && val < 900) ? 1 : 0;
@@ -89,7 +87,8 @@ public class TestHBaseWd {
     for (Result current : distributedScanner) {
       countMatched++;
       if (previous != null) {
-        Assert.assertTrue(Bytes.compareTo(current.getRow(), previous.getRow()) >= 0);
+        Assert.assertTrue(Bytes.compareTo(keyDistributor.getOriginalKey(current.getRow()),
+                                          keyDistributor.getOriginalKey(previous.getRow())) >= 0);
         Assert.assertTrue(Bytes.toInt(current.getValue(CF, QUAL)) >= 100);
         Assert.assertTrue(Bytes.toInt(current.getValue(CF, QUAL)) < 900);
       }
@@ -99,13 +98,8 @@ public class TestHBaseWd {
     Assert.assertEquals(valuesCountInSeekInterval, countMatched);
   }
 
-  @Test
-  public void testMapreduceJob() throws IOException, ClassNotFoundException, InterruptedException {
-    byte spread = (byte) 12;
-
+  protected void testMapReduce(AbstractRowKeyDistributor keyDistributor) throws IOException, InterruptedException, ClassNotFoundException {
     // Writing data
-    AbstractRowKeyDistributor keyDistributor = new RowKeyDistributorByOneBytePrefix(spread);
-    HTable hTable = testingUtility.createTable(Bytes.toBytes("table"), CF);
     long millis = System.currentTimeMillis();
     int valuesCountInSeekInterval = 0;
     for (int i = 0; i < 500; i++) {
@@ -126,13 +120,13 @@ public class TestHBaseWd {
 
     Job job = new Job(conf, "testMapreduceJob");
     TableMapReduceUtil.initTableMapperJob("table", scan,
-      RowCounterMapper.class, ImmutableBytesWritable.class, Result.class, job);
+            RowCounterMapper.class, ImmutableBytesWritable.class, Result.class, job);
 
     // Substituting standard TableInputFormat which was set in TableMapReduceUtil.initTableMapperJob(...)
     job.setInputFormatClass(WdTableInputFormat.class);
     keyDistributor.addInfo(job.getConfiguration());
 
-    job.setJarByClass(TestHBaseWd.class);
+    job.setJarByClass(HBaseWdTestUtil.class);
 
     job.setNumReduceTasks(0);
     job.setOutputFormatClass(NullOutputFormat.class);

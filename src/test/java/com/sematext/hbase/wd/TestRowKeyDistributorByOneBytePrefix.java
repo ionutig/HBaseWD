@@ -15,25 +15,23 @@
  */
 package com.sematext.hbase.wd;
 
-import org.apache.hadoop.conf.Configuration;
+import java.io.IOException;
+
+import org.junit.Test;
 
 /**
- * Defines the way row keys are distributed
- *
  * @author Alex Baranau
  */
-public abstract class AbstractRowKeyDistributor implements Parametrizable {
-  public abstract byte[] getDistributedKey(byte[] originalKey);
+public class TestRowKeyDistributorByOneBytePrefix extends HBaseWdTestUtil {
+  @Test
+  public void testSimpleScan() throws IOException, InterruptedException {
+    AbstractRowKeyDistributor keyDistributor = new RowKeyDistributorByOneBytePrefix((byte) 12);
+    testSimpleScan(keyDistributor);
+  }
 
-  public abstract byte[] getOriginalKey(byte[] adjustedKey);
-
-  public abstract byte[][] getAllDistributedKeys(byte[] originalKey);
-
-  public void addInfo(Configuration conf) {
-    conf.set(WdTableInputFormat.ROW_KEY_DISTRIBUTOR_CLASS, this.getClass().getCanonicalName());
-    String paramsToStore = getParamsToStore();
-    if (paramsToStore != null) {
-      conf.set(WdTableInputFormat.ROW_KEY_DISTRIBUTOR_PARAMS, paramsToStore);
-    }
+  @Test
+  public void testMapreduceJob() throws IOException, ClassNotFoundException, InterruptedException {
+    AbstractRowKeyDistributor keyDistributor = new RowKeyDistributorByOneBytePrefix((byte) 13);
+    testMapReduce(keyDistributor);
   }
 }

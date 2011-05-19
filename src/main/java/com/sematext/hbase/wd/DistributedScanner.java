@@ -33,15 +33,19 @@ import org.apache.hadoop.hbase.util.Bytes;
  * @author Alex Baranau
  */
 public class DistributedScanner implements ResultScanner {
+  private final AbstractRowKeyDistributor keyDistributor;
   private final ResultScanner[] scanners;
   private final List<Result>[] nextOfScanners;
   private Result next = null;
 
   @SuppressWarnings("unchecked")
-  public DistributedScanner(ResultScanner[] scanners) throws IOException {
+  public DistributedScanner(AbstractRowKeyDistributor keyDistributor, ResultScanner[] scanners) throws IOException {
+    this.keyDistributor = keyDistributor;
     this.scanners = scanners;
     this.nextOfScanners = new List[scanners.length];
-    Arrays.fill(this.nextOfScanners, new ArrayList<Result>());
+    for (int i = 0; i < this.nextOfScanners.length; i++) {
+      this.nextOfScanners[i] = new ArrayList<Result>();
+    }
   }
 
   private boolean hasNext(int nbRows) throws IOException {
@@ -92,24 +96,24 @@ public class DistributedScanner implements ResultScanner {
     byte[][] startKeys = keyDistributor.getAllDistributedKeys(original.getStartRow());
     byte[][] stopKeys = keyDistributor.getAllDistributedKeys(original.getStopRow());
     Scan[] scans = new Scan[startKeys.length];
-    for (byte i = 0; i < startKeys.length; i++) {
+    for (int i = 0; i < startKeys.length; i++) {
       scans[i] = new Scan(original);
       scans[i].setStartRow(startKeys[i]);
       scans[i].setStopRow(stopKeys[i]);
     }
 
     ResultScanner[] rss = new ResultScanner[startKeys.length];
-    for (byte i = 0; i < scans.length; i++) {
+    for (int i = 0; i < scans.length; i++) {
       rss[i] = hTable.getScanner(scans[i]);
     }
 
-    return new DistributedScanner(rss);
+    return new DistributedScanner(keyDistributor, rss);
   }
 
   private Result nextInternal(int nbRows) throws IOException {
     Result result = null;
-    byte indexOfScannerToUse = -1;
-    for (byte i = 0; i < nextOfScanners.length; i++) {
+    int indexOfScannerToUse = -1;
+    for (int i = 0; i < nextOfScanners.length; i++) {
       if (nextOfScanners[i] == null) {
         // result scanner is exhausted, don't advance it any more
         continue;
@@ -126,7 +130,9 @@ public class DistributedScanner implements ResultScanner {
         nextOfScanners[i].addAll(Arrays.asList(results));
       }
 
-      if (result == null || Bytes.compareTo(nextOfScanners[i].get(0).getRow(), result.getRow()) < 0) {
+      // if result is null or next record has original key less than the candidate to be returned
+      if (result == null || Bytes.compareTo(keyDistributor.getOriginalKey(nextOfScanners[i].get(0).getRow()),
+                                            keyDistributor.getOriginalKey(result.getRow())) < 0) {
         result = nextOfScanners[i].get(0);
         indexOfScannerToUse = i;
       }
