@@ -39,6 +39,7 @@ public class RowKeyDistributorByHashPrefix extends AbstractRowKeyDistributor {
   public static interface Hasher extends Parametrizable {
     byte[] getHashPrefix(byte[] originalKey);
     byte[][] getAllPossiblePrefixes();
+    int getPrefixLength(byte[] adjustedKey);
   }
 
   public static class OneByteSimpleHash implements Hasher {
@@ -88,6 +89,11 @@ public class RowKeyDistributorByHashPrefix extends AbstractRowKeyDistributor {
     }
 
     @Override
+    public int getPrefixLength(byte[] adjustedKey) {
+      return 1;
+    }
+
+    @Override
     public String getParamsToStore() {
       return String.valueOf(mod);
     }
@@ -105,7 +111,12 @@ public class RowKeyDistributorByHashPrefix extends AbstractRowKeyDistributor {
 
   @Override
   public byte[] getOriginalKey(byte[] adjustedKey) {
-    return Bytes.tail(adjustedKey, adjustedKey.length - 1);
+    int prefixLength = hasher.getPrefixLength(adjustedKey);
+    if (prefixLength > 0) {
+      return Bytes.tail(adjustedKey, adjustedKey.length - prefixLength);
+    } else {
+      return adjustedKey;
+    }
   }
 
   @Override

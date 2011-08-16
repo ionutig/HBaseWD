@@ -29,7 +29,7 @@ import org.junit.Test;
  */
 public class TestRowKeyDistributorByHashPrefix extends HBaseWdTestUtil {
   @Test
-  public void testSimpleScan() throws IOException, InterruptedException {
+  public void testSimpleScanWithOneByteSimpleHash() throws IOException, InterruptedException {
     AbstractRowKeyDistributor keyDistributor =
             new RowKeyDistributorByHashPrefix(new RowKeyDistributorByHashPrefix.OneByteSimpleHash(15));
     testSimpleScan(keyDistributor);
@@ -47,9 +47,120 @@ public class TestRowKeyDistributorByHashPrefix extends HBaseWdTestUtil {
   }
 
   @Test
-  public void testMapreduceJob() throws IOException, ClassNotFoundException, InterruptedException {
+  public void testMapreduceJobWithOneByteSimpleHash() throws IOException, ClassNotFoundException, InterruptedException {
     AbstractRowKeyDistributor keyDistributor =
             new RowKeyDistributorByHashPrefix(new RowKeyDistributorByHashPrefix.OneByteSimpleHash(17));
+    testMapReduce(keyDistributor);
+  }
+
+  public static class EmptyPrefixHasher implements RowKeyDistributorByHashPrefix.Hasher {
+    private static final byte[] EMPTY_PREFIX = new byte[0];
+
+    @Override
+    public byte[] getHashPrefix(byte[] originalKey) {
+      return EMPTY_PREFIX;
+    }
+
+    @Override
+    public byte[][] getAllPossiblePrefixes() {
+      return new byte[][] {EMPTY_PREFIX};
+    }
+
+    @Override
+    public int getPrefixLength(byte[] adjustedKey) {
+      // the original key wasn't changed
+      return 0;
+    }
+
+    @Override
+    public String getParamsToStore() {
+      return null;
+    }
+
+    @Override
+    public void init(String storedParams) {
+      // DO NOTHING
+    }
+  }
+
+  @Test
+  public void testSimpleScanWithIdentityHasher() throws IOException, InterruptedException {
+    AbstractRowKeyDistributor keyDistributor = new RowKeyDistributorByHashPrefix(new EmptyPrefixHasher());
+    testSimpleScan(keyDistributor);
+
+    // Testing simple get
+    byte[] originalKey = new byte[] {123, 124, 122};
+    // No need to adjust key here as hasher doesn't change it
+    Put put = new Put(originalKey);
+    put.add(CF, QUAL, Bytes.toBytes("some"));
+    hTable.put(put);
+
+    byte[] distributedKey = keyDistributor.getDistributedKey(originalKey);
+    Result result = hTable.get(new Get(distributedKey));
+    Assert.assertArrayEquals(originalKey, keyDistributor.getOriginalKey(result.getRow()));
+    Assert.assertArrayEquals(Bytes.toBytes("some"), result.getValue(CF, QUAL));
+  }
+
+  @Test
+  public void testMapreduceJobWithIdentityHasher() throws IOException, ClassNotFoundException, InterruptedException {
+    AbstractRowKeyDistributor keyDistributor =
+            new RowKeyDistributorByHashPrefix(new EmptyPrefixHasher());
+    testMapReduce(keyDistributor);
+  }
+
+
+  public static class MultiBytesPrefixHasher implements RowKeyDistributorByHashPrefix.Hasher {
+    private static final byte[] PREFIX = new byte[] {(byte) 23,(byte) 55};
+
+    @Override
+    public byte[] getHashPrefix(byte[] originalKey) {
+      return PREFIX;
+    }
+
+    @Override
+    public byte[][] getAllPossiblePrefixes() {
+      return new byte[][] {PREFIX};
+    }
+
+    @Override
+    public int getPrefixLength(byte[] adjustedKey) {
+      // the original key wasn't changed
+      return PREFIX.length;
+    }
+
+    @Override
+    public String getParamsToStore() {
+      return null;
+    }
+
+    @Override
+    public void init(String storedParams) {
+      // DO NOTHING
+    }
+  }
+
+  @Test
+  public void testSimpleScanWithMultiBytesPrefixHasher() throws IOException, InterruptedException {
+    AbstractRowKeyDistributor keyDistributor = new RowKeyDistributorByHashPrefix(new MultiBytesPrefixHasher());
+    testSimpleScan(keyDistributor);
+
+    // Testing simple get
+    byte[] originalKey = new byte[] {123, 124, 122};
+    // No need to adjust key here as hasher doesn't change it
+    Put put = new Put(keyDistributor.getDistributedKey(originalKey));
+    put.add(CF, QUAL, Bytes.toBytes("some"));
+    hTable.put(put);
+
+    byte[] distributedKey = keyDistributor.getDistributedKey(originalKey);
+    Result result = hTable.get(new Get(distributedKey));
+    Assert.assertArrayEquals(originalKey, keyDistributor.getOriginalKey(result.getRow()));
+    Assert.assertArrayEquals(Bytes.toBytes("some"), result.getValue(CF, QUAL));
+  }
+
+  @Test
+  public void testMapreduceJobWithMultiBytesPrefixHasher() throws IOException, ClassNotFoundException, InterruptedException {
+    AbstractRowKeyDistributor keyDistributor =
+            new RowKeyDistributorByHashPrefix(new MultiBytesPrefixHasher());
     testMapReduce(keyDistributor);
   }
 }
