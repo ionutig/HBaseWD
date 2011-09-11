@@ -51,7 +51,7 @@ public class RowKeyDistributorByHashPrefix extends AbstractRowKeyDistributor {
     public OneByteSimpleHash() {}
 
     /**
-     * Ctor
+     * Creates a new instance of this class.
      * @param maxBuckets max buckets number, should be in 1...255 range
      */
     public OneByteSimpleHash(int maxBuckets) {
@@ -75,8 +75,9 @@ public class RowKeyDistributorByHashPrefix extends AbstractRowKeyDistributor {
 
     @Override
     public byte[] getHashPrefix(byte[] originalKey) {
-      byte hash = 0;
+      long hash = 0;
       for (byte b : originalKey) {
+        hash = hash << Byte.SIZE;
         hash += b;
       }
 
