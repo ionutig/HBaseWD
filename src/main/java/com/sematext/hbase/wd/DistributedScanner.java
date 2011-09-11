@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -93,8 +94,21 @@ public class DistributedScanner implements ResultScanner {
   }
 
   public static DistributedScanner create(HTable hTable, Scan original, AbstractRowKeyDistributor keyDistributor) throws IOException {
-    byte[][] startKeys = keyDistributor.getAllDistributedKeys(original.getStartRow());
-    byte[][] stopKeys = keyDistributor.getAllDistributedKeys(original.getStopRow());
+    byte[] originalStartRow = original.getStartRow();
+    byte[] originalStopRow = original.getStopRow();
+	byte[][] startKeys = keyDistributor.getAllDistributedKeys(originalStartRow);
+	byte[][] stopKeys;
+	if (Arrays.equals(originalStopRow, HConstants.EMPTY_END_ROW)) {
+		stopKeys = new byte[startKeys.length][];
+	  for (int i = 0; i < stopKeys.length - 1; i++) {
+		  stopKeys[i] = startKeys[i + 1];
+	  }
+	  stopKeys[stopKeys.length - 1] = HConstants.EMPTY_END_ROW;
+	} else {
+		stopKeys = keyDistributor.getAllDistributedKeys(originalStopRow);
+	  assert stopKeys.length == startKeys.length;
+	}
+
     Scan[] scans = new Scan[startKeys.length];
     for (int i = 0; i < startKeys.length; i++) {
       scans[i] = new Scan(original);

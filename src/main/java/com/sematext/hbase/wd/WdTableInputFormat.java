@@ -17,9 +17,11 @@ package com.sematext.hbase.wd;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -60,8 +62,20 @@ public class WdTableInputFormat extends TableInputFormat {
     List<InputSplit> allSplits = new ArrayList<InputSplit>();
     Scan originalScan = getScan();
 
-    byte[][] startRows = rowKeyDistributor.getAllDistributedKeys(originalScan.getStartRow());
-    byte[][] stopRows = rowKeyDistributor.getAllDistributedKeys(originalScan.getStopRow());
+    byte[] originalStartRow = originalScan.getStartRow();
+    byte[] originalStopRow = originalScan.getStopRow();
+	byte[][] startRows = rowKeyDistributor.getAllDistributedKeys(originalStartRow);
+	byte[][] stopRows;
+	if (Arrays.equals(originalStopRow, HConstants.EMPTY_END_ROW)) {
+	  stopRows = new byte[startRows.length][];
+	  for (int i = 0; i < stopRows.length - 1; i++) {
+        stopRows[i] = startRows[i + 1];
+	  }
+	  stopRows[stopRows.length - 1] = HConstants.EMPTY_END_ROW;
+	} else {
+	  stopRows = rowKeyDistributor.getAllDistributedKeys(originalStopRow);
+	  assert stopRows.length == startRows.length;
+	}
 
     for (int i = 0; i < startRows.length; i++) {
       // Internally super.getSplits(...) uses scan object stored in private variable,
