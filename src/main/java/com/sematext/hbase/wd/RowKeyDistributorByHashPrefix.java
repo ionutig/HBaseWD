@@ -77,10 +77,8 @@ public class RowKeyDistributorByHashPrefix extends AbstractRowKeyDistributor {
     public byte[] getHashPrefix(byte[] originalKey) {
       long hash = 0;
       for (byte b : originalKey) {
-        hash = hash << Byte.SIZE;
-        hash += b;
+        hash = (hash << Byte.SIZE) + (b & 0xff);
       }
-
       return new byte[] {(byte) (hash % mod)};
     }
 

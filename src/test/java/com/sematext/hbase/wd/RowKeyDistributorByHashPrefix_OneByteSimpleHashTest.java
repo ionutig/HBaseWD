@@ -1,6 +1,7 @@
 package com.sematext.hbase.wd;
 
 import java.util.Arrays;
+import java.util.Random;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -14,10 +15,10 @@ public class RowKeyDistributorByHashPrefix_OneByteSimpleHashTest extends HBaseWd
   public void testMaxDistribution() {
     RowKeyDistributorByHashPrefix.OneByteSimpleHash hasher = new RowKeyDistributorByHashPrefix.OneByteSimpleHash(255);
     byte[][] allPrefixes = hasher.getAllPossiblePrefixes();
+    Random r = new Random();
     for (int i = 0; i < 1000; i++) {
-      byte[] originalKey = new byte[] {(byte) (Math.random() * 255),
-                                       (byte) (Math.random() * 255),
-                                       (byte) (Math.random() * 255)};
+      byte[] originalKey = new byte[3];
+      r.nextBytes(originalKey);
       byte[] hash = hasher.getHashPrefix(originalKey);
       boolean found = false;
       for (int k = 0; k < allPrefixes.length; k++) {
@@ -38,10 +39,10 @@ public class RowKeyDistributorByHashPrefix_OneByteSimpleHashTest extends HBaseWd
     RowKeyDistributorByHashPrefix.OneByteSimpleHash hasher = new RowKeyDistributorByHashPrefix.OneByteSimpleHash(10);
     byte[][] allPrefixes = hasher.getAllPossiblePrefixes();
     Assert.assertTrue(allPrefixes.length >= 9 && allPrefixes.length <= 10);
+    Random r = new Random();
     for (int i = 0; i < 1000; i++) {
-      byte[] originalKey = new byte[] {(byte) (Math.random() * 255),
-                                       (byte) (Math.random() * 255),
-                                       (byte) (Math.random() * 255)};
+      byte[] originalKey = new byte[3];
+      r.nextBytes(originalKey);
       byte[] hash = hasher.getHashPrefix(originalKey);
       boolean found = false;
       for (int k = 0; k < allPrefixes.length; k++) {
