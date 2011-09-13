@@ -51,15 +51,15 @@ public class RowKeyDistributorByHashPrefix extends AbstractRowKeyDistributor {
     public OneByteSimpleHash() {}
 
     /**
-     * Ctor
+     * Creates a new instance of this class.
      * @param maxBuckets max buckets number, should be in 1...255 range
      */
     public OneByteSimpleHash(int maxBuckets) {
-      if (maxBuckets < 1 || maxBuckets > 255) {
-        throw new IllegalArgumentException("maxBuckets should be in 1..255 range");
+      if (maxBuckets < 1 || maxBuckets > 256) {
+        throw new IllegalArgumentException("maxBuckets should be in 1..256 range");
       }
       // i.e. "real" maxBuckets value = maxBuckets or maxBuckets-1
-      this.mod = (maxBuckets + 1) / 2;
+      this.mod = maxBuckets;
     }
 
     // Used to minimize # of created object instances
@@ -67,25 +67,24 @@ public class RowKeyDistributorByHashPrefix extends AbstractRowKeyDistributor {
     private static final byte[][] PREFIXES;
 
     static {
-      PREFIXES = new byte[Byte.MAX_VALUE - Byte.MIN_VALUE + 1][];
-      for (int i = Byte.MIN_VALUE; i <= Byte.MAX_VALUE; i++) {
-        PREFIXES[i - Byte.MIN_VALUE] = new byte[] {(byte) i};
+      PREFIXES = new byte[256][];
+      for (int i = 0; i < 256; i++) {
+        PREFIXES[i] = new byte[] {(byte) i};
       }
     }
 
     @Override
     public byte[] getHashPrefix(byte[] originalKey) {
-      byte hash = 0;
+      long hash = 0;
       for (byte b : originalKey) {
-        hash += b;
+        hash = (hash << Byte.SIZE) + (b & 0xff);
       }
-
       return new byte[] {(byte) (hash % mod)};
     }
 
     @Override
     public byte[][] getAllPossiblePrefixes() {
-      return Arrays.copyOfRange(PREFIXES, (0 - mod + 1) - Byte.MIN_VALUE, mod - Byte.MIN_VALUE);
+      return Arrays.copyOfRange(PREFIXES, 0, mod);
     }
 
     @Override

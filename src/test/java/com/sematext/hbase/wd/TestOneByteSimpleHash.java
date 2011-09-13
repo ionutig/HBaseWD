@@ -17,6 +17,7 @@ package com.sematext.hbase.wd;
 
 import java.util.Arrays;
 
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -26,12 +27,12 @@ import org.junit.Test;
 public class TestOneByteSimpleHash {
   @Test
   public void testMaxDistribution() {
-    RowKeyDistributorByHashPrefix.OneByteSimpleHash hasher = new RowKeyDistributorByHashPrefix.OneByteSimpleHash(255);
+    RowKeyDistributorByHashPrefix.OneByteSimpleHash hasher = new RowKeyDistributorByHashPrefix.OneByteSimpleHash(256);
     byte[][] allPrefixes = hasher.getAllPossiblePrefixes();
     for (int i = 0; i < 1000; i++) {
-      byte[] originalKey = new byte[] {(byte) (Math.random() * 255),
-                                       (byte) (Math.random() * 255),
-                                       (byte) (Math.random() * 255)};
+      byte[] originalKey = new byte[] {(byte) (Math.random() * 256),
+                                       (byte) (Math.random() * 256),
+                                       (byte) (Math.random() * 256)};
       byte[] hash = hasher.getHashPrefix(originalKey);
       boolean found = false;
       for (int k = 0; k < allPrefixes.length; k++) {
@@ -53,9 +54,9 @@ public class TestOneByteSimpleHash {
     byte[][] allPrefixes = hasher.getAllPossiblePrefixes();
     Assert.assertTrue(allPrefixes.length >= 9 && allPrefixes.length <= 10);
     for (int i = 0; i < 1000; i++) {
-      byte[] originalKey = new byte[] {(byte) (Math.random() * 255),
-                                       (byte) (Math.random() * 255),
-                                       (byte) (Math.random() * 255)};
+      byte[] originalKey = new byte[] {(byte) (Math.random() * 256),
+                                       (byte) (Math.random() * 256),
+                                       (byte) (Math.random() * 256)};
       byte[] hash = hasher.getHashPrefix(originalKey);
       boolean found = false;
       for (int k = 0; k < allPrefixes.length; k++) {
@@ -69,5 +70,31 @@ public class TestOneByteSimpleHash {
 
     Assert.assertArrayEquals(
             hasher.getHashPrefix(new byte[] {123, 12, 11}), hasher.getHashPrefix(new byte[] {123, 12, 11}));
+  }
+
+  @Test
+  public void testHashPrefixDistribution() {
+    testDistribution(32, 55);
+    testDistribution(256, 20);
+    testDistribution(256, 1);
+    testDistribution(1, 200);
+    testDistribution(1, 1);
+  }
+
+  private void testDistribution(int maxBuckets, int countForEachBucket) {
+    RowKeyDistributorByHashPrefix distributor = new RowKeyDistributorByHashPrefix(new RowKeyDistributorByHashPrefix.OneByteSimpleHash(maxBuckets));
+    int[] bucketCounts = new int[maxBuckets];
+    for (int i = 0; i < maxBuckets * countForEachBucket; i++) {
+      byte[] original = Bytes.toBytes(i);
+      byte[] distributed = distributor.getDistributedKey(original);
+      bucketCounts[distributed[0] & 0xff]++;
+    }
+
+    byte[][] allKeys = distributor.getAllDistributedKeys(new byte[0]);
+    Assert.assertEquals(maxBuckets, allKeys.length);
+
+    for (int bucketCount : bucketCounts) {
+      Assert.assertEquals(countForEachBucket, bucketCount);
+    }
   }
 }
