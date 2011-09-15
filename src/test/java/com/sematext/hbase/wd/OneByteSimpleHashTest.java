@@ -1,38 +1,30 @@
-/**
- * Copyright 2010 Sematext International
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/*
+ * Copyright (c) Sematext International
+ * All Rights Reserved
+ * <p/>
+ * THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF Sematext International
+ * The copyright notice above does not evidence any
+ * actual or intended publication of such source code.
  */
 package com.sematext.hbase.wd;
 
 import java.util.Arrays;
+import java.util.Random;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Assert;
 import org.junit.Test;
 
-/**
- * @author Alex Baranau
- */
-public class TestOneByteSimpleHash {
+public class OneByteSimpleHashTest {
   @Test
   public void testMaxDistribution() {
     RowKeyDistributorByHashPrefix.OneByteSimpleHash hasher = new RowKeyDistributorByHashPrefix.OneByteSimpleHash(256);
     byte[][] allPrefixes = hasher.getAllPossiblePrefixes();
+    Assert.assertEquals(256, allPrefixes.length);
+    Random r = new Random();
     for (int i = 0; i < 1000; i++) {
-      byte[] originalKey = new byte[] {(byte) (Math.random() * 256),
-                                       (byte) (Math.random() * 256),
-                                       (byte) (Math.random() * 256)};
+      byte[] originalKey = new byte[3];
+      r.nextBytes(originalKey);
       byte[] hash = hasher.getHashPrefix(originalKey);
       boolean found = false;
       for (int k = 0; k < allPrefixes.length; k++) {
@@ -52,11 +44,11 @@ public class TestOneByteSimpleHash {
   public void testLimitedDistribution() {
     RowKeyDistributorByHashPrefix.OneByteSimpleHash hasher = new RowKeyDistributorByHashPrefix.OneByteSimpleHash(10);
     byte[][] allPrefixes = hasher.getAllPossiblePrefixes();
-    Assert.assertTrue(allPrefixes.length >= 9 && allPrefixes.length <= 10);
+    Assert.assertEquals(10, allPrefixes.length);
+    Random r = new Random();
     for (int i = 0; i < 1000; i++) {
-      byte[] originalKey = new byte[] {(byte) (Math.random() * 256),
-                                       (byte) (Math.random() * 256),
-                                       (byte) (Math.random() * 256)};
+      byte[] originalKey = new byte[3];
+      r.nextBytes(originalKey);
       byte[] hash = hasher.getHashPrefix(originalKey);
       boolean found = false;
       for (int k = 0; k < allPrefixes.length; k++) {
@@ -72,6 +64,11 @@ public class TestOneByteSimpleHash {
             hasher.getHashPrefix(new byte[] {123, 12, 11}), hasher.getHashPrefix(new byte[] {123, 12, 11}));
   }
 
+  /**
+   * Tests that records are well spread over buckets.
+   * In fact this test-case verifies *even* distribution across buckets, which may be broken with changing the hashing
+   * algorithm.
+   */
   @Test
   public void testHashPrefixDistribution() {
     testDistribution(32, 55);

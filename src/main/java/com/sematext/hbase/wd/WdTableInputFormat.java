@@ -60,15 +60,11 @@ public class WdTableInputFormat extends TableInputFormat {
     List<InputSplit> allSplits = new ArrayList<InputSplit>();
     Scan originalScan = getScan();
 
-    byte[][] startRows = rowKeyDistributor.getAllDistributedKeys(originalScan.getStartRow());
-    byte[][] stopRows = rowKeyDistributor.getAllDistributedKeys(originalScan.getStopRow());
+    Scan[] scans = rowKeyDistributor.getDistributedScans(originalScan);
 
-    for (int i = 0; i < startRows.length; i++) {
+    for (Scan scan : scans) {
       // Internally super.getSplits(...) uses scan object stored in private variable,
       // to re-use the code of super class we switch scan object with scans we
-      Scan scan = new Scan(originalScan);
-      scan.setStartRow(startRows[i]);
-      scan.setStopRow(stopRows[i]);
       setScan(scan);
       List<InputSplit> splits = super.getSplits(context);
       allSplits.addAll(splits);

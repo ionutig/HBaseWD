@@ -92,17 +92,10 @@ public class DistributedScanner implements ResultScanner {
     }
   }
 
-  public static DistributedScanner create(HTable hTable, Scan original, AbstractRowKeyDistributor keyDistributor) throws IOException {
-    byte[][] startKeys = keyDistributor.getAllDistributedKeys(original.getStartRow());
-    byte[][] stopKeys = keyDistributor.getAllDistributedKeys(original.getStopRow());
-    Scan[] scans = new Scan[startKeys.length];
-    for (int i = 0; i < startKeys.length; i++) {
-      scans[i] = new Scan(original);
-      scans[i].setStartRow(startKeys[i]);
-      scans[i].setStopRow(stopKeys[i]);
-    }
+  public static DistributedScanner create(HTable hTable, Scan originalScan, AbstractRowKeyDistributor keyDistributor) throws IOException {
+    Scan[] scans = keyDistributor.getDistributedScans(originalScan);
 
-    ResultScanner[] rss = new ResultScanner[startKeys.length];
+    ResultScanner[] rss = new ResultScanner[scans.length];
     for (int i = 0; i < scans.length; i++) {
       rss[i] = hTable.getScanner(scans[i]);
     }

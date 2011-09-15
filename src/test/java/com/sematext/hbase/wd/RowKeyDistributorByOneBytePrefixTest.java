@@ -15,23 +15,11 @@
  */
 package com.sematext.hbase.wd;
 
-import java.io.IOException;
-
-import org.junit.Test;
-
 /**
  * @author Alex Baranau
  */
-public class TestRowKeyDistributorByOneBytePrefix extends HBaseWdTestUtil {
-  @Test
-  public void testSimpleScan() throws IOException, InterruptedException {
-    AbstractRowKeyDistributor keyDistributor = new RowKeyDistributorByOneBytePrefix((byte) 12);
-    testSimpleScan(keyDistributor);
-  }
-
-  @Test
-  public void testMapreduceJob() throws IOException, ClassNotFoundException, InterruptedException {
-    AbstractRowKeyDistributor keyDistributor = new RowKeyDistributorByOneBytePrefix((byte) 13);
-    testMapReduce(keyDistributor);
+public class RowKeyDistributorByOneBytePrefixTest extends RowKeyDistributorTestBase {
+  public RowKeyDistributorByOneBytePrefixTest() {
+    super(new RowKeyDistributorByOneBytePrefix((byte) 12));
   }
 }
